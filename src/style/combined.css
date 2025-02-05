@@ -1,0 +1,141 @@
+.form-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  margin: 0 auto;
+  background-color: #e8f5e9; /* Light green background */
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.left-section {
+  flex: 1;
+  padding: 20px;
+  background-color: #c8e6c9; /* Soft green */
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-title {
+  text-align: center;
+  margin-bottom: 15px;
+  color: #1b5e20; /* Dark green */
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.input-group label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #2e7d32; /* Dark green */
+  margin-bottom: 5px;
+}
+
+.input-group input,
+.input-group select {
+  padding: 10px;
+  border: 1px solid #81c784;
+  border-radius: 5px;
+  background-color: #f1f8e9; /* Lightest green */
+}
+
+/* Row Layout for Side-by-Side Fields */
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.row .input-group {
+  width: 48%;
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* GST Verification Button */
+.gst-verification {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.verify-btn {
+  padding: 10px;
+  background-color: #388e3c; /* Strong green */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.verify-btn:hover {
+  background-color: #2e7d32;
+}
+
+/* Submit Button */
+.btn-submit {
+  background-color: #388e3c; /* Strong green */
+  color: white;
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.btn-submit:hover {
+  background-color: #2e7d32;
+}
+.gst-success {
+  color: green;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.gst-error {
+  color: red;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.right-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-placeholder {
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.placeholder-img {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.image-placeholder.c_name{
+  width: 80%;
+}
