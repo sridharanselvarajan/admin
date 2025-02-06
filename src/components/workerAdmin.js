@@ -1,75 +1,115 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "../../src/style/companystatus.css";
+import axios from "axios";
 
-const companyData = [
-  {
-    workerName: "Rajat Jaiswal",
-    aadharNumber: "123456789012",
-    address: "Coimbatore, Tamil Nadu",
-    phone: "8960106544",
-    secondPhone: "9597458562",
-    email: "jaissrajat123@gmail.com",
-    date: "2025-02-01",
-  },
-  {
-    workerName: "Amit Verma",
-    aadharNumber: "987654321098",
-    address: "Bangalore, Karnataka",
-    phone: "9876543210",
-    secondPhone: "8123456789",
-    email: "amitverma@techsolutions.com",
-    date: "2025-02-02",
-  },
-];
+// Date format helper function
+const formatDate = (date) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
-const CompanyStatus = () => {
-  const [addCompanies, setAddCompanies] = useState(companyData);
-  const [joinCompanies, setJoinCompanies] = useState([]);
-  const [editingCompany, setEditingCompany] = useState(null);
-  const [updatedDetails, setUpdatedDetails] = useState({});
-  const [filterText, setFilterText] = useState("");
-  const [isAddCompanies, setIsAddCompanies] = useState(true); // New state to switch views
+const WorkerAdmin = () => {
+  const [workers, setWorkers] = useState([]); // Stores the "Add Workers"
+  const [joinWorkers, setJoinWorkers] = useState([]); // Stores the "Join Workers"
+  const [editingWorker, setEditingWorker] = useState(null); // Tracks which worker is being edited
+  const [updatedDetails, setUpdatedDetails] = useState({}); // Stores updated worker details
+  const [filterText, setFilterText] = useState(""); // Stores the filter text for searching
+  const [isAddWorkers, setIsAddWorkers] = useState(true); // Flag to switch between "Add Workers" and "Join Workers"
 
-  // Move a company from "Add Companies" to "Join Companies"
-  const handleAddToJoin = (company) => {
-    setJoinCompanies([...joinCompanies, company]);
-    setAddCompanies(addCompanies.filter((c) => c.workerName !== company.workerName));
-  };
+  // Fetch all workers from the backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const addWorkersResponse = await axios.get("http://localhost:3001/api/workers");
+        const joinWorkersResponse = await axios.get("http://localhost:3001/api/joinWorkers");
+        setWorkers(addWorkersResponse.data);
+        setJoinWorkers(joinWorkersResponse.data);
+      } catch (error) {
+        console.error("Error fetching workers:", error);
+      }
+    };
+    fetchData();
+  }, []);
 
-  // Remove company from either "Add Companies" or "Join Companies"
-  const handleRemoveCompany = (workerName) => {
-    if (!isAddCompanies) {
-      setJoinCompanies(joinCompanies.filter((entry) => entry.workerName !== workerName));
-    } else {
-      setAddCompanies(addCompanies.filter((entry) => entry.workerName !== workerName));
+  const handleAddToJoin = async (worker) => {
+    try {
+      // Add the worker to the backend
+      await axios.post("http://localhost:3001/api/joinWorkers", worker);
+      setJoinWorkers((prevJoinWorkers) => [...prevJoinWorkers, worker]);
+      setWorkers((prevWorkers) => prevWorkers.filter((w) => w.phone !== worker.phone));
+  
+      // Sending email notification
+      const response = await axios.post("http://localhost:3001/api/sendEmail", {
+        to: worker.email, // Email of the worker
+        subject: "Worker Added Successfully",
+        text: `Dear ${worker.workerName},\n\nYou have been successfully added to our system. Welcome aboard!\n\nBest regards,\nYour Team Name`,
+      });
+  
+      const { password } = response.data; // Extract the password from the backend response
+  
+      alert(
+        `${worker.workerName} has been successfully added to Join Workers and notified by email.\n\nGenerated password: ${password}`
+      );
+    } catch (error) {
+      console.error("Error adding worker to join:", error);
+      alert("Worker has already been added, please add a new worker.");
     }
   };
+  
 
-  // Start editing a company
-  const handleEditCompany = (company) => {
-    setEditingCompany(company.workerName);
-    setUpdatedDetails(company);
+  const handleRemoveWorker = async (workerPhone, isAddWorkers) => {
+    try {
+      if (isAddWorkers) {
+        // If it's for the "add workers" section, delete from workers API
+        await axios.delete(`http://localhost:3001/api/workers/${workerPhone}`);
+        // Re-fetch workers to sync state with the backend
+        const response = await axios.get("http://localhost:3001/api/workers");
+        setWorkers(response.data); // Update the state with fresh data from the backend
+      } else {
+        // If it's for the "join workers" section, delete from the "join workers" API
+        await axios.delete(`http://localhost:3001/api/joinWorkers/${workerPhone}`);
+        // Re-fetch join workers to sync state with the backend
+        const response = await axios.get("http://localhost:3001/api/joinWorkers");
+        setJoinWorkers(response.data); // Update the state with fresh data from the backend
+      }
+    } catch (error) {
+      console.error("Error removing worker:", error);
+    }
+  };
+  
+  
+
+  const handleEditWorker = (worker) => {
+    setEditingWorker(worker.phone);
+    setUpdatedDetails({
+      ...worker,
+      date: formatDate(worker.date),
+    });
   };
 
-  // Handle input change
   const handleChange = (e) => {
     setUpdatedDetails({ ...updatedDetails, [e.target.name]: e.target.value });
   };
 
-  // Save updated company details
-  const handleSaveUpdate = () => {
-    setJoinCompanies(
-      joinCompanies.map((company) =>
-        company.workerName === editingCompany ? updatedDetails : company
-      )
-    );
-    setEditingCompany(null);
+  const handleSaveUpdate = async () => {
+    try {
+      await axios.put(`http://localhost:3001/api/joinWorkers/${updatedDetails.phone}`, updatedDetails);
+      setJoinWorkers((prevJoinWorkers) =>
+        prevJoinWorkers.map((worker) =>
+          worker.phone === editingWorker ? updatedDetails : worker
+        )
+      );
+      setEditingWorker(null);
+    } catch (error) {
+      console.error("Error updating worker:", error);
+    }
   };
 
-  // Filter companies based on user input
-  const filteredCompanies = (isAddCompanies ? addCompanies : joinCompanies).filter((company) =>
-    Object.values(company)
-      .map(val => val && val.toString())  // Ensures all values are strings (including dates)
+  const filteredWorkers = (isAddWorkers ? workers : joinWorkers).filter((worker) =>
+    Object.values(worker)
       .join(" ")
       .toLowerCase()
       .includes(filterText.toLowerCase())
@@ -77,9 +117,8 @@ const CompanyStatus = () => {
 
   return (
     <div className="table-container">
-      <h2 className="table-title">{isAddCompanies ? "Worker" : "Join Workers"}</h2>
+      <h2 className="table-title">{isAddWorkers ? "Worker" : "Join Worker"}</h2>
 
-      {/* Filter Input and Buttons Row */}
       <div className="filter-container">
         <label className="filterheader">Filter:</label>
         <input
@@ -89,14 +128,12 @@ const CompanyStatus = () => {
           value={filterText}
           onChange={(e) => setFilterText(e.target.value)}
         />
-        
-        {/* Button to Switch Views */}
         <div className="filter-buttons">
           <button
             className="btn-filter"
-            onClick={() => setIsAddCompanies(!isAddCompanies)} // Switch views on button click
+            onClick={() => setIsAddWorkers(!isAddWorkers)}
           >
-            {isAddCompanies ? "Go to Join Worker" : "Go to Add Worker"}
+            {isAddWorkers ? "Go to Join Workers" : "Go to Add Workers"}
           </button>
         </div>
       </div>
@@ -116,9 +153,9 @@ const CompanyStatus = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredCompanies.map((entry, index) => (
+            {filteredWorkers.map((entry, index) => (
               <tr key={index} className={index % 2 === 0 ? "even-row" : "odd-row"}>
-                {editingCompany === entry.workerName ? (
+                {editingWorker === entry.phone ? (
                   <>
                     <td>
                       <input
@@ -180,7 +217,7 @@ const CompanyStatus = () => {
                       <button onClick={handleSaveUpdate} className="btn-update">
                         Save
                       </button>
-                      <button onClick={() => setEditingCompany(null)} className="btn-delete">
+                      <button onClick={() => setEditingWorker(null)} className="btn-delete">
                         Cancel
                       </button>
                     </td>
@@ -195,21 +232,21 @@ const CompanyStatus = () => {
                     <td>{entry.email}</td>
                     <td>{entry.date}</td>
                     <td>
-                      {isAddCompanies ? (
+                      {isAddWorkers ? (
                         <>
                           <button onClick={() => handleAddToJoin(entry)} className="btn-update">
                             Add
                           </button>
-                          <button onClick={() => handleRemoveCompany(entry.workerName)} className="btn-delete">
+                          <button onClick={() => handleRemoveWorker(entry.phone, isAddWorkers)} className="btn-delete">
                             Remove
                           </button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => handleEditCompany(entry)} className="btn-update">
+                          <button onClick={() => handleEditWorker(entry)} className="btn-update">
                             Update
                           </button>
-                          <button onClick={() => handleRemoveCompany(entry.workerName)} className="btn-delete">
+                          <button onClick={() => handleRemoveWorker(entry.phone, isAddWorkers)} className="btn-delete">
                             Remove
                           </button>
                         </>
@@ -226,4 +263,4 @@ const CompanyStatus = () => {
   );
 };
 
-export default CompanyStatus;
+export default WorkerAdmin;

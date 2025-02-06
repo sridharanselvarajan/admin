@@ -34,23 +34,36 @@ const CompanyStatus = () => {
     fetchData();
   }, []);
 
+
+  
+
+
   const handleAddToJoin = async (company) => {
     try {
-      // Optional: Disable "Add" button here (add loading state if necessary)
+      // Add the company to the backend
       await axios.post("http://localhost:3001/api/joinCompanies", company);
-      
-      // Update "Join Companies" and "Add Companies" states
       setJoinCompanies((prevJoinCompanies) => [...prevJoinCompanies, company]);
       setCompanies((prevCompanies) => prevCompanies.filter((c) => c.phone !== company.phone));
-      
-      // Show success message
-      alert(`${company.companyName} has been successfully added to Join Companies.`);
+  
+      // Sending email notification
+      const response = await axios.post("http://localhost:3001/api/sendEmail", {
+        to: company.email, // Email of the company
+        subject: "Company Added Successfully",
+        text: `Dear ${company.companyName},\n\nYour company has been successfully added to our system. Welcome aboard!\n\nBest regards,\nYour Company Name`,
+      });
+  
+      const { password } = response.data; // Extract the password from the backend response
+  
+      alert(
+        `${company.companyName} has been successfully added to Join Companies and notified by email.\n\nGenerated password: ${password}`
+      );
     } catch (error) {
       console.error("Error adding company to join:", error);
-      alert("Failed to add the company to Join Companies. Please try again.");
+      alert("Company has already been added, please add a new company.");
     }
   };
   
+
 
   const handleRemoveCompany = async (companyPhone, isAddCompanies) => {
     try {

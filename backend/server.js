@@ -4,6 +4,17 @@ const axios = require("axios");
 const connectDB = require("./db/db");
 const Company = require("./models/companySchema");
 const JoinedCompany = require("./models/joincompanies"); // New schema for joined companies
+const Worker= require("./models/workerSchema");
+const JoinedWorker = require("./models/joinworker");
+const crypto = require("crypto"); // Import crypto for password generation
+
+
+const nodemailer = require("nodemailer");
+
+const { createTransport }=require("nodemailer");
+
+
+
 
 connectDB();
 
@@ -15,6 +26,61 @@ app.use(express.json());
 app.use(cors());
 
 // API Routes
+
+
+const sendMail = async (to, subject, text) => {
+  try {
+    const sender = createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: "sabarim6369@gmail.com", // Replace with your email
+        pass: "gsdn ofbj bvqp bwxt", // Use App Password
+      },
+    });
+
+    // Compose the email
+    const composeMail = {
+      from: "sabarim6369@gmail.com",
+      to,
+      subject,
+      text,
+    };
+
+    // Send mail
+    await sender.sendMail(composeMail);
+    console.log("Email sent successfully!");
+  } catch (error) {
+    console.error("Error sending email:", error);
+    throw new Error("Failed to send email");
+  }
+};
+
+app.post("/api/sendEmail", async (req, res) => {
+  const { to, subject, text } = req.body;
+
+  try {
+    if (!to || !subject || !text) {
+      return res.status(400).send("Missing required fields: 'to', 'subject', or 'text'");
+    }
+
+    // Generate a random password
+    const password = crypto.randomBytes(6).toString("hex");
+
+    // Append the password to the email text
+    const emailText = `${text}\n\nYour generated password: ${password}`;
+
+    // Send the email
+    await sendMail(to, subject, emailText);
+
+    // Respond with the generated password (optional, for further use)
+    res.status(200).json({ message: "Email sent successfully", password });
+  } catch (error) {
+    console.error("Error in /api/sendEmail route:", error);
+    res.status(500).send("Error sending email");
+  }
+});
 
 // Submit company form
 app.post("/api/sell", async (req, res) => {
@@ -140,7 +206,7 @@ app.post("/api/verify-gst", async (req, res) => {
   }
 
   try {
-    const apiKey = "9e7eed7db40a3b5a8a77895ab62ba707"; // Replace with your actual API key
+    const apiKey = "25a8b9c23d51eb9f458fd6bdaba633dc"; // Replace with your actual API key
     const url = `http://sheet.gstincheck.co.in/check/${apiKey}/${gstin}`;
 
     const response = await axios.get(url);
@@ -157,6 +223,129 @@ app.post("/api/verify-gst", async (req, res) => {
       error: "Error verifying GST",
       details: error.response?.data || error.message
     });
+  }
+});
+
+
+
+
+app.get("/api/workers", async (req, res) => {
+  try {
+    const workers = await Worker.find();
+    res.json(workers);
+  } catch (err) {
+    res.status(500).send("Error fetching workers");
+  }
+});
+
+// Add worker (POST request)
+app.post("/api/workers", async (req, res) => {
+  try {
+    const newWorker = new Worker(req.body);
+    await newWorker.save();
+    res.status(201).send("Worker added");
+  } catch (err) {
+    res.status(500).send("Error adding worker");
+  }
+});
+// Delete worker (DELETE request)
+app.delete("/api/workers/:phone", async (req, res) => {
+  try {
+    const { phone } = req.params; // Extract phone number from request parameters
+    const deletedWorker = await Worker.findOneAndDelete({ phone }); // Delete worker by phone
+
+    if (!deletedWorker) {
+      return res.status(404).send("Worker not found");
+    }
+
+    res.status(200).send("Worker removed");
+  } catch (err) {
+    res.status(500).send("Error removing worker");
+  }
+});
+
+
+// Update worker (PUT request)
+app.put("/api/workers/:phone", async (req, res) => {
+  try {
+    const { phone } = req.params; // Extract phone number from request parameters
+    const updatedWorker = await Worker.findOneAndUpdate({ phone }, req.body, { new: true });
+
+    if (!updatedWorker) {
+      return res.status(404).send("Worker not found");
+    }
+
+    res.status(200).send("Worker updated");
+  } catch (err) {
+    res.status(500).send("Error updating worker");
+  }
+});
+
+
+// Assuming you have a similar structure as for joined companies
+
+// Importing the JoinedWorker model
+
+// Add worker to 'Joined Workers'
+app.post("/api/joinWorkers", async (req, res) => {
+  try {
+    const newJoinedWorker = new JoinedWorker(req.body);
+    await newJoinedWorker.save();
+    res.status(201).json({ message: "Worker added to joined workers successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Error adding worker to joined workers", details: error });
+  }
+});
+
+// Get all joined workers
+app.get("/api/joinWorkers", async (req, res) => {
+  try {
+    const joinedWorkers = await JoinedWorker.find();
+    res.json(joinedWorkers);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching joined workers data", details: error });
+  }
+});
+
+
+// Delete a joined worker based on phone number
+app.delete("/api/joinWorkers/:phone", async (req, res) => {
+  try {
+    const { phone } = req.params; // Extract the phone number from the request parameters
+
+    const deletedJoinedWorker = await JoinedWorker.findOneAndDelete({ phone }); // Find and delete worker by phone number
+
+    if (!deletedJoinedWorker) {
+      return res.status(404).json({ error: "Joined worker not found" });
+    }
+
+    res.status(200).json({ message: "Joined worker deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Error deleting joined worker", details: error });
+  }
+});
+
+// Update joined worker information based on phone
+app.put("/api/joinWorkers/:phone", async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const updatedJoinedWorker = await JoinedWorker.findOneAndUpdate(
+      { phone }, // Find worker by phone
+      req.body,  // Updated data
+      { new: true } // Return the updated worker
+    );
+
+    if (!updatedJoinedWorker) {
+      return res.status(404).json({ error: "Joined worker not found with the given phone number" });
+    }
+
+    res.status(200).json({
+      message: "Joined worker information updated successfully",
+      worker: updatedJoinedWorker
+    });
+  } catch (error) {
+    console.error("Error updating joined worker:", error);
+    res.status(500).json({ error: "Error updating joined worker", details: error });
   }
 });
 
